@@ -1,0 +1,3 @@
+[submodule "extern/extend"]
+	path = extern/extend
+	url = https://github.com/MarkMitch/extend.git

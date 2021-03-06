@@ -1,6 +1,7 @@
-//#include "https://raw.githubusercontent.com/MarkMitch/extend/main/main.cpp"
+#ifndef MARKMITCH_ITER_H
+#define MARKMITCH_ITER_H
 
-#include <optional>
+#include "extend.hpp"
 
 namespace iter {
     xtd_function to_iter;
@@ -693,8 +694,6 @@ constexpr decltype(auto) impl_tag(iter::tag::partition<N>) (I&& iterable, F&& fu
 template<size_t N, iter::iter I, class F>
 requires (N > 1)
 constexpr decltype(auto) impl_tag(iter::tag::partition<N>) (I&& iter, F&& func) {
-    using arg_t = decltype(std::as_const(*std::declval<iter::next_t<std::decay_t<I>>>()));
-
     auto out = std::array<std::vector<iter::value_t<std::decay_t<I>>>, N>{};
     while (auto val = iter::next(iter)) {
         auto slot = std::invoke((F&&) func, std::as_const(*val));
@@ -972,6 +971,31 @@ constexpr auto impl_tag(iter::tag::collect<CT, AT>)(I&& iter, size_t reserve) {
     return container;
 }
 
+#include <map>
+
+template<template<class> class AT, iter::iter I, class Comp>
+constexpr auto impl_tag(iter::tag::collect<std::map, AT>)(I&& iter, Comp compare) {
+    using KV = iter::value_t<I>;
+    using K = std::tuple_element_t<0, KV>;
+    using V = std::tuple_element_t<1, KV>;
+    using A = AT<std::pair<K const, V>>;
+    std::map<K, V, Comp, A> container(compare);
+    while (auto val = iter::next(iter)) {
+        if constexpr (iter::optional_iter<I>)
+            container.emplace(std::move(*val));
+        else
+            container.emplace(*val);
+    }
+    return container;
+}
+
+template<template<class> class AT, iter::iter I>
+constexpr auto impl_tag(iter::tag::collect<std::map, AT>)(I&& iter) {
+    using KV = iter::value_t<I>;
+    using K = std::tuple_element_t<0, KV>;
+    return iter::collect<std::map, AT>((I&&) iter, std::less<K>{});
+}
+
 #include <limits>
 
 namespace iter {
@@ -1015,102 +1039,4 @@ constexpr auto impl(iter::until)(T begin, T end) {
     return iter::range{begin, end};
 }
 
-#include <string>
-#define L(...) (__VA_OPT__([&](auto&& _) -> decltype(auto) { return __VA_ARGS__; }))
-
-float getsum(const std::array<float, 64>& a, const std::array<float, 64>& b, std::array<float, 64>& c) {
-    using namespace xtd::literals;
-
-    // float sum = 0;
-    // // for (auto [a, i] : iter::zip(a, iter::indices) ) {
-    // //     sum += a * i;
-    // // }
-    // // return sum;
-    // for (int i = 0; i < 64; ++i) {
-    //     sum += a[i] * i;
-    // }
-    // return sum;
-
-    using namespace iter;
-        // $$$ foreach(_, xtd::apply([](auto& a, auto& b, auto& c) {
-        //     c = a * b; }));
-    // float acc = 0;
-    // for (int i = 0; i < 64; ++i) {
-    //     acc += a[i] + b[i] * i;
-    // }
-    // return acc;
-    return a 
-        // $(to_iter) () 
-        // $(map) (L(_ * 2))
-        $(map) (L(_ * 2))
-        $(map) (L(_ < 3 ? _ : 0))
-        // $(zip) (b)
-        // $(filter) ([](auto& ab) {
-        //     auto& [a, b] = ab;
-        //     return a < 3; })
-        // $(enumerate) ()
-        $(sum) ();
-
-    // float sum = 0;
-    // for (int i = 0; i < std::size(a); ++i) {
-    //     sum += a[i] + b[i];
-    // }   
-    // return sum;
-}
-
-// int getsum(const std::vector<std::string>& v) {
-//     using namespace xtd::literals;
-
-//     auto i1 = v
-//         $(iter::filter)  (L(_.length() > 4));
-    
-//     auto i2 = i1 
-//         $(iter::map)     (L(_ + _))
-//         $(iter::flatmap) (L(_.length() > 4 ? std::optional(_) : std::nullopt));
-
-//     auto [sum, count] = iter::zip(i1, i2)
-//         // | iter::flatmap(_, [](auto& i) { 
-//         //     return i % 3 != 0 ? std::optional(i) : std::nullopt; }) 
-//         // | iter::map(_, [](auto& s) {
-//         //     return s + s; })
-//         // | iter::flatmap(_, [](auto i) {
-//         //     return std::array<int, 2>{i, i}; })
-//         | iter::fold(_, std::tuple(0, 0), [](auto acc, auto& b) {
-//             auto& [sum, count] = acc;
-//             auto& [l, r] = b;
-//             std::cout << "l: " << l << ", r: " << r << "\n";
-//             return std::tuple(sum + l.length() + r.length(), count + 2); });
-//     return sum/count;
-//         // | iter::collect<std::vector>(_);
-
-//     // int sum = 0;
-//     // for (auto i : container) {
-//     //     sum += i;
-//     // }
-//     // return sum;
-// }
-
-// #include <ranges>
-
-// int getsum2(const std::vector<std::string>& v) {
-//     using namespace xtd::literals;
-
-//     int sum = 0, count = 0;
-//     for (const auto& s : v 
-//             | std::views::filter([](auto& s) {
-//                 return s.length() > 4; })
-//             | std::views::transform([](auto& s) {
-//                 return s + s; })
-//                 ) {
-//         sum += s.length();
-//         count += 1;
-//     }
-     
-//     return sum/count;
-
-//     // int sum = 0;
-//     // for (auto i : container) {
-//     //     sum += i;
-//     // }
-//     // return sum;
-// }
+#endif // MARKMITCH_ITER_H
